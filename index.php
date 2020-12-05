@@ -2,16 +2,32 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/export-data.js"></script>
 <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<script src="./jquery-3.5.1.min.js"></script>
+<script src="./bootstrap-4.5.3-dist/js/bootstrap.min.js"></script>
 <link rel="stylesheet" href="./index.css">
+<link rel="stylesheet" href="./bootstrap-4.5.3-dist/css/bootstrap.min.css">
 <figure class="highcharts-figure">
     <div id="container"></div>
     <p class="highcharts-description">
-        Illustration de la comparaison des hashtags (positif,négatif ou nul) des tweets en fonction des pays.
+        Illustration de la comparaison des hashtags (positif,négatif ou neutre) des tweets en fonction des pays ou de l'age.
     </p>
 </figure>
+<div class="highcharts-figure">
+<div class="input-group mb-3">
+  <div class="input-group-prepend">
+    <label class="input-group-text" for="inputGroupSelect01">Filtrer</label>
+  </div>
+  <select class="custom-select" id="inputGroupSelect01">
+    <option value="pays">Par pays</option>
+    <option value="age">Par age</option>
+  </select>
+</div>
+</div>
+
 
 
 <script>
+
 /*
 Fonction pour la création du graphe qui sera exécuter à l'interieur de la fonction charger après récupération des données
 */
@@ -22,13 +38,13 @@ const printChart = ()=>{
         type: 'column'
     },
     title: {
-        text: 'Statitisques des hashtags de tweets en focntion des pays'
+        text: "Statitisques des hashtags de tweets en focntion des pays ou de l'age des utilisateurs"
     },
     subtitle: {
-        text: 'Source: base de données local'
+        text: 'Source: base de données locale'
     },
     xAxis: {
-        categories: listePays,
+        categories: tabAbcisses,
         crosshair: true
     },
     yAxis: {
@@ -73,10 +89,28 @@ const printChart = ()=>{
 
     var dataLength = 0;
     var listePays =[];
+    var trancheAges = [];
     var objTweets =[];
+    var tweetsParAge = [];
     var tweetsPositifs = [];
     var tweetsNegatifs = [];
     var tweetsNeutres = [];
+    var tabAbcisses = [];
+    var filtre = "pays";
+    var eventFilter = false;
+
+    function filtreSetter(newFiltre){
+        this.filtre = newFiltre;
+        eventFilter = true;
+    }
+
+    var selectElement = document.getElementById('inputGroupSelect01');
+/*
+Observation du changement d'option au niveau du select
+*/
+selectElement.addEventListener('change', (event) => {
+ filtreSetter(event.target.value);
+});
 
 function charger() {
     /*setTimeout permettant de spécifier l'intervalle de temps à laquelle 
@@ -92,7 +126,8 @@ setTimeout( function(){
             var data = JSON.parse(ajax.responseText);
             var count = Object.keys(data).length;
 
-            if(count != dataLength){
+            // Si un nouvel objet est reçu ou que le setter du filtre est appelé
+            if(count != dataLength || eventFilter){
 
                 dataLength = count;
                 listePays = [];
@@ -100,6 +135,8 @@ setTimeout( function(){
 
                 Object.keys(data).forEach(k=>{
                     var pays = data[k].pays;
+                    var age = data[k].age;
+                    ageConcact = age + " ans";
                     if( !(listePays.includes(pays)) ){
                        listePays.push(pays);
                      /*Addition du nombre de tweets par hashtag en fonction des pays
@@ -113,22 +150,53 @@ setTimeout( function(){
                 },{});
                 objTweets.push(donneesTweets);
                     }
-                });
 
+                    if( !(trancheAges.includes(ageConcact)) ){
+                        trancheAges.push(ageConcact);
+                   /*Addition du nombre de tweets par hashtag en fonction de l'âge
+                     */  
+                        donneesTweets = data.reduce(function(sums,entry){
+                    if(entry.age == age){
+                        sums["age"] = entry.age;
+                        sums[entry.hashtag] = (sums[entry.hashtag] || 0) + 1;
+                    }
+                    return sums;
+                },{});
+                tweetsParAge.push(donneesTweets);
+                    }
+                });
                  tweetsPositifs = [];
                  tweetsNegatifs = [];
                  tweetsNeutres = [];
+                if(filtre =="pays"){
 
-                for (let key in objTweets) {
+                    tabAbcisses = listePays;
+
+                    for (let key in objTweets) {
                     var positifs = objTweets[key].positif;
                     var negatifs = objTweets[key].negatif;
                     var neutres = objTweets[key].neutre;
                     tweetsPositifs.push(parseInt(positifs))
                     tweetsNegatifs.push(parseInt(negatifs))
                     tweetsNeutres.push(parseInt(neutres))
+                    }
+                }else if(filtre =="age"){
+                    // trie de l'âge par ordre croissant
+                    trancheAges.sort();
+                    tabAbcisses = trancheAges;
+
+                    for (let key in tweetsParAge) {
+                    var positifs = tweetsParAge[key].positif;
+                    var negatifs = tweetsParAge[key].negatif;
+                    var neutres = tweetsParAge[key].neutre;
+                    tweetsPositifs.push(parseInt(positifs))
+                    tweetsNegatifs.push(parseInt(negatifs))
+                    tweetsNeutres.push(parseInt(neutres))
+                    }
                 }
 
                 printChart();
+                eventFilter = false;
             }
             
         }
@@ -138,6 +206,7 @@ setTimeout( function(){
 
 },1000);
 }
+
 
 charger();
 
