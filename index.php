@@ -181,8 +181,6 @@ setTimeout( function(){
                     tweetsNeutres.push(parseInt(neutres))
                     }
                 }else if(filtre =="age"){
-                    // trie de l'âge par ordre croissant
-                    trancheAges.sort();
                     tabAbcisses = trancheAges;
 
                     for (let key in tweetsParAge) {
